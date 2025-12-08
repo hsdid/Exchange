@@ -1,0 +1,18 @@
+spring:
+    datasource:
+        url: jdbc:postgresql://localhost:5432/exchange
+        username: postgres
+        password: postgres
+        driver-class-name: org.postgresql.Driver
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: false
+
+aws:
+    region: eu-west-1
+    endpoint: http://localhost:4566
+
+app:
+    sqs:
+        queue-url: http://localhost:4566/000000000000/exchange-queue.fifo
