@@ -1,4 +1,4 @@
-package org.exchange.infrastructure.messaging;
+package org.exchange.infrastructure.message;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

@@ -1,7 +1,5 @@
 package org.exchange.modules.engine.domain;
 
-import org.exchange.modules.engine.infrastructure.dto.OrderCommand;
-
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -12,7 +10,7 @@ public class BinaryOrderSerializer {
     // W produkcji oblicza się to precyzyjniej
     private static final int MAX_RECORD_SIZE = 1024;
 
-    public static void serialize(OrderCommand cmd, ByteBuffer buffer) {
+    public static void serialize(Order order, ByteBuffer buffer) {
         // 1. Zapamiętujemy pozycję startową, żeby potem wpisać długość
         int startPos = buffer.position();
 
@@ -20,13 +18,13 @@ public class BinaryOrderSerializer {
         buffer.putInt(0);
 
         // ZMIANA: Zapisujemy Longa (8 bajtów) zamiast Stringa
-        buffer.putLong(cmd.userId() != null ? cmd.userId() : 0L);
+        buffer.putLong(order.getUserId() != null ? order.getUserId() : 0L);
 
-        writeString(buffer, cmd.clientOrderId());
-        buffer.put((byte) (cmd.side() == Side.BUY ? 0 : 1));
-        writeString(buffer, cmd.symbol());
-        writeString(buffer, cmd.amount().toString());
-        writeString(buffer, cmd.price().toString());
+        writeString(buffer, order.getClientOrderId());
+        buffer.put((byte) (order.getSide() == Side.BUY ? 0 : 1));
+        writeString(buffer, order.getSymbol());
+        writeString(buffer, order.getAmount().toString());
+        writeString(buffer, order.getPrice().toString());
 
         // 3. Obliczamy faktyczną długość
         int endPos = buffer.position();
@@ -36,7 +34,7 @@ public class BinaryOrderSerializer {
         buffer.position(endPos);
     }
 
-    public static OrderCommand deserialize(ByteBuffer buffer) {
+    public static Order deserialize(ByteBuffer buffer) {
         Long userId = buffer.getLong();
 
         String reqId = readString(buffer);
@@ -46,7 +44,7 @@ public class BinaryOrderSerializer {
         BigDecimal amount = new BigDecimal(readString(buffer));
         BigDecimal price = new BigDecimal(readString(buffer));
 
-        return new OrderCommand(reqId, userId, side, symbol, amount, price);
+        return new Order(reqId, userId, side, symbol, amount, price);
     }
 
     // --- Helpery do Stringów ---

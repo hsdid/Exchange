@@ -45,6 +45,14 @@ public class Order {
         this.price = price;
     }
 
+    public String getClientOrderId() {
+        return clientOrderId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
     public void changeAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount cannot be null or less than or equal to zero");

@@ -1,73 +1,77 @@
 package org.exchange.modules.engine.domain;
 
 import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
-import org.exchange.modules.engine.infrastructure.dto.OrderCommand;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 public class OrderBook {
     // price -> list of orders
-    private final NavigableMap<BigDecimal, LinkedList<OrderCommand>> bids = new TreeMap<>(Comparator.reverseOrder()); //list of buy orders
-    private final NavigableMap<BigDecimal, LinkedList<OrderCommand>> asks = new TreeMap<>(); //list of sell orders
+    private final NavigableMap<BigDecimal, LinkedList<Order>> bids = new TreeMap<>(Comparator.reverseOrder()); //list of buy orders
+    private final NavigableMap<BigDecimal, LinkedList<Order>> asks = new TreeMap<>(); //list of sell orders
 
-    public void process(OrderCommand orderCommand) {
-        if (orderCommand.side() == Side.BUY) {
-            matchBuy(orderCommand);
+    public void process(Order order) {
+        if (order.getSide() == Side.BUY) {
+            matchBuy(order);
         } else {
-            matchSell(orderCommand);
+            matchSell(order);
         }
     }
 
-    private void matchBuy(OrderCommand buyOrder) {
+    private void matchBuy(Order buyOrder) {
         // naive: match with lowest ask price <= buy.price
-        Iterator<Map.Entry<BigDecimal, LinkedList<OrderCommand>>> asksIterator = asks.entrySet().iterator();
-        BigDecimal remainingAmountToBuy = buyOrder.amount();
+        Iterator<Map.Entry<BigDecimal, LinkedList<Order>>> asksIterator = asks.entrySet().iterator();
+        BigDecimal remainingAmountToBuy = buyOrder.getAmount();
         while (asksIterator.hasNext() && remainingAmountToBuy.compareTo(BigDecimal.ZERO) > 0) {
-            Map.Entry<BigDecimal, LinkedList<OrderCommand>> askLevel = asksIterator.next();
+            Map.Entry<BigDecimal, LinkedList<Order>> askLevel = asksIterator.next();
             BigDecimal askLevelPrice = askLevel.getKey();
-            if (buyOrder.price().compareTo(askLevelPrice) < 0) break; // price not acceptable
-            LinkedList<OrderCommand> offerList = askLevel.getValue();
+            if (buyOrder.getPrice().compareTo(askLevelPrice) < 0) break; // price not acceptable
+            LinkedList<Order> offerList = askLevel.getValue();
             while (!offerList.isEmpty() && remainingAmountToBuy.compareTo(BigDecimal.ZERO) > 0) {
-                OrderCommand ask = offerList.peek();
-                BigDecimal tradeQtyToConsume = remainingAmountToBuy.min(ask.amount());
+                Order ask = offerList.peek();
+                BigDecimal tradeQtyToConsume = remainingAmountToBuy.min(ask.getAmount());
                 // here produce Trade record, update wallets -- omitted for brevity
                 // reduce quantities (in real model we'd mutate sizes)
                 remainingAmountToBuy = remainingAmountToBuy.subtract(tradeQtyToConsume);
 
-                if (tradeQtyToConsume.equals(ask.amount())) {
+                if (tradeQtyToConsume.equals(ask.getAmount())) {
                     offerList.poll();
                 } else {
-                    //change ammount
+                    ask.changeAmount(ask.getAmount().subtract(tradeQtyToConsume));
                 }
             }
             if (offerList.isEmpty()) asksIterator.remove();
         }
         if (remainingAmountToBuy.compareTo(BigDecimal.ZERO) > 0) {
             // place remaining in bids
-            bids.computeIfAbsent(buyOrder.price(), p -> new LinkedList<>()).add(buyOrder);
+            bids.computeIfAbsent(buyOrder.getPrice(), p -> new LinkedList<>()).add(buyOrder);
         }
     }
 
-    private void matchSell(OrderCommand sellOrder) {
-        Iterator<Map.Entry<BigDecimal, LinkedList<OrderCommand>>> bidsIterator = bids.entrySet().iterator();
-        BigDecimal remainingAmountToSell = sellOrder.amount();
+    private void matchSell(Order sellOrder) {
+        Iterator<Map.Entry<BigDecimal, LinkedList<Order>>> bidsIterator = bids.entrySet().iterator();
+        BigDecimal remainingAmountToSell = sellOrder.getAmount();
         while (bidsIterator.hasNext() && remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
-            Map.Entry<BigDecimal, LinkedList<OrderCommand>> bidsLevel = bidsIterator.next();
+            Map.Entry<BigDecimal, LinkedList<Order>> bidsLevel = bidsIterator.next();
             BigDecimal bidPrice = bidsLevel.getKey();
-            if (sellOrder.price().compareTo(bidPrice) > 0) break;
-            LinkedList<OrderCommand> list = bidsLevel.getValue();
-            while (!list.isEmpty() && remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
-                OrderCommand bid = list.peek();
-                BigDecimal tradeQty = remainingAmountToSell.min(bid.amount());
+            if (sellOrder.getPrice().compareTo(bidPrice) > 0) break;
+            LinkedList<Order> orderList = bidsLevel.getValue();
+            while (!orderList.isEmpty() && remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
+                Order bid = orderList.peek();
+                BigDecimal tradeQtyToConsume = remainingAmountToSell.min(bid.getAmount());
                 // produce trade ...
-                remainingAmountToSell = remainingAmountToSell.subtract(tradeQty);
-                list.poll();
+                remainingAmountToSell = remainingAmountToSell.subtract(tradeQtyToConsume);
+                if (tradeQtyToConsume.equals(bid.getAmount())) {
+                    orderList.poll(); // remove from book
+                } else {
+                    bid.changeAmount(bid.getAmount().subtract(tradeQtyToConsume)); // reduce quantity
+                }
+
             }
-            if (list.isEmpty()) bidsIterator.remove();
+            if (orderList.isEmpty()) bidsIterator.remove();
         }
         if (remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
-            asks.computeIfAbsent(sellOrder.price(), p -> new LinkedList<>()).add(sellOrder);
+            asks.computeIfAbsent(sellOrder.getPrice(), p -> new LinkedList<>()).add(sellOrder);
         }
     }
 
@@ -82,7 +86,7 @@ public class OrderBook {
     }
 
     private List<OrderBookView.LevelDto> collectLevels(
-            NavigableMap<BigDecimal, LinkedList<OrderCommand>> levels,
+            NavigableMap<BigDecimal, LinkedList<Order>> levels,
             int depth
     ) {
         return levels.entrySet().stream()
@@ -91,7 +95,7 @@ public class OrderBook {
                     BigDecimal price = entry.getKey();
                     // Sumujemy ilość z wszystkich zleceń na tym poziomie
                     BigDecimal totalVolume = entry.getValue().stream()
-                            .map(OrderCommand::amount) // 'remainingAmount'
+                            .map(Order::getAmount) // 'remainingAmount'
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     return new OrderBookView.LevelDto(price, totalVolume);

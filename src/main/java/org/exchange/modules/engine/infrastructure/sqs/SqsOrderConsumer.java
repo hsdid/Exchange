@@ -83,7 +83,7 @@ public class SqsOrderConsumer {
                     orderCommand.price()
             );
 
-            engine.process(orderCommand);
+            engine.process(order);
 
             sqs.deleteMessage(builder -> builder
                     .queueUrl(queueUrl)

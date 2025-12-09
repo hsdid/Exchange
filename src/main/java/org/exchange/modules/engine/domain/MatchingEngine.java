@@ -1,11 +1,11 @@
 package org.exchange.modules.engine.domain;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import org.exchange.modules.engine.infrastructure.dto.OrderCommand; // upewnij się co do importów
-import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
+import jakarta.annotation.PreDestroy; // upewnij się co do importów
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,7 +20,7 @@ import java.util.concurrent.*;
 @Service
 public final class MatchingEngine {
 
-    private final BlockingQueue<OrderCommand> queue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Order> queue = new LinkedBlockingQueue<>();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     //private final ExecutorService worker = Executors.newFixedThreadPool(3);
     private final OrderBook orderBook = new OrderBook(); // Stan w pamięci
@@ -86,11 +86,11 @@ public final class MatchingEngine {
                 payloadBuf.flip(); // Przygotuj do odczytu
 
                 // Deserializacja
-                OrderCommand cmd = BinaryOrderSerializer.deserialize(payloadBuf);
+                Order order = BinaryOrderSerializer.deserialize(payloadBuf);
 
                 // Wrzucamy do pamięci
-                processedClientOrderIds.add(cmd.clientOrderId());
-                orderBook.process(cmd);
+                processedClientOrderIds.add(order.getClientOrderId());
+                orderBook.process(order);
             }
         }
         System.out.println("Replay finished.");
@@ -100,15 +100,15 @@ public final class MatchingEngine {
         worker.submit(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    OrderCommand order = queue.take();
+                    Order order = queue.take();
 
                     if (isDuplicate(order)) {
-                        System.out.println("Ignored duplicate order: " + order.clientOrderId());
+                        System.out.println("Ignored duplicate order: " + order.getClientOrderId());
                         continue;
                     }
 
                     appendJournal(order);
-                    processedClientOrderIds.add(order.clientOrderId());
+                    processedClientOrderIds.add(order.getClientOrderId());
                     orderBook.process(order);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -119,15 +119,15 @@ public final class MatchingEngine {
         });
     }
 
-    public void process(OrderCommand command) {
-        System.out.println("Received order: " + command);
-        queue.offer(command);
+    public void process(Order order) {
+        System.out.println("Received order: " + order);
+        queue.offer(order);
     }
 
-    private void appendJournal(OrderCommand orderCommand) throws IOException {
+    private void appendJournal(Order order) throws IOException {
         writeBuffer.clear();
 
-        BinaryOrderSerializer.serialize(orderCommand, writeBuffer);
+        BinaryOrderSerializer.serialize(order, writeBuffer);
 
         writeBuffer.flip();
 
@@ -147,8 +147,8 @@ public final class MatchingEngine {
         }
     }
 
-    private boolean isDuplicate(OrderCommand cmd) {
-        return processedClientOrderIds.contains(cmd.clientOrderId());
+    private boolean isDuplicate(Order order) {
+        return processedClientOrderIds.contains(order.getClientOrderId());
     }
 
 
