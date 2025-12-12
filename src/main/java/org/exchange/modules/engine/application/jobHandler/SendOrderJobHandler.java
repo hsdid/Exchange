@@ -3,12 +3,15 @@ package org.exchange.modules.engine.application.jobHandler;
 import org.exchange.modules.core.domain.message.JobHandlerInterface;
 import org.exchange.modules.engine.application.job.SendOrderJob;
 import org.exchange.modules.engine.domain.MatchingEngine;
-import org.exchange.modules.engine.domain.Order;
+import org.exchange.modules.engine.domain.model.Order;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SendOrderJobHandler implements JobHandlerInterface<SendOrderJob> {
 
+    private static final Logger log = LoggerFactory.getLogger(SendOrderJobHandler.class);
     private final MatchingEngine engine;
 
     public SendOrderJobHandler(MatchingEngine engine) {
@@ -17,18 +20,17 @@ public class SendOrderJobHandler implements JobHandlerInterface<SendOrderJob> {
 
     @Override
     public void handle(SendOrderJob job) {
-        System.out.println("Handler processing job: " + job);
+        log.info("Handle job: {}", job);
 
-        // Logic moved from Consumer to Handler
-//        Order order = new Order(
-//                job.clientOrderId(),
-//                job.userId(),
-//                job.side(),
-//                job.symbol(),
-//                job.amount(),
-//                job.price()
-//        );
-//
-//        engine.process(order);
+        Order order = new Order(
+                job.clientOrderId(),
+                job.userId(),
+                job.side(),
+                job.symbol(),
+                job.amount(),
+                job.price()
+        );
+
+        engine.process(order);
     }
 }

@@ -1,4 +1,4 @@
-package org.exchange.modules.engine.domain;
+package org.exchange.modules.engine.domain.model;
 
 import java.math.BigDecimal;
 

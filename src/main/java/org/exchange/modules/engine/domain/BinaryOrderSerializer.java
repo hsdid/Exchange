@@ -1,13 +1,14 @@
 package org.exchange.modules.engine.domain;
 
+import org.exchange.modules.engine.domain.model.Order;
+import org.exchange.modules.engine.domain.model.Side;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class BinaryOrderSerializer {
 
-    // Bufor 1KB wystarczy z zapasem na jedno zlecenie
-    // W produkcji oblicza się to precyzyjniej
     private static final int MAX_RECORD_SIZE = 1024;
 
     public static void serialize(Order order, ByteBuffer buffer) {
@@ -17,9 +18,7 @@ public class BinaryOrderSerializer {
         // Zostawiamy 4 bajty miejsca na "Długość całego rekordu"
         buffer.putInt(0);
 
-        // ZMIANA: Zapisujemy Longa (8 bajtów) zamiast Stringa
         buffer.putLong(order.getUserId() != null ? order.getUserId() : 0L);
-
         writeString(buffer, order.getClientOrderId());
         buffer.put((byte) (order.getSide() == Side.BUY ? 0 : 1));
         writeString(buffer, order.getSymbol());
@@ -46,8 +45,6 @@ public class BinaryOrderSerializer {
 
         return new Order(reqId, userId, side, symbol, amount, price);
     }
-
-    // --- Helpery do Stringów ---
 
     private static void writeString(ByteBuffer buf, String s) {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);

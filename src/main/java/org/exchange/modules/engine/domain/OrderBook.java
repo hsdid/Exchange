@@ -1,5 +1,7 @@
 package org.exchange.modules.engine.domain;
 
+import org.exchange.modules.engine.domain.model.Order;
+import org.exchange.modules.engine.domain.model.Side;
 import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
 
 import java.math.BigDecimal;

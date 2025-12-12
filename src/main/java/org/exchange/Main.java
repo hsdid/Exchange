@@ -15,8 +15,6 @@ public class Main {
 
     @Bean
     public CommandLineRunner init() {
-        return args -> {
-            System.out.println(">>> Inicjalizacja");
-        };
+        return args -> {};
     }
 }

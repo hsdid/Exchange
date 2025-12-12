@@ -3,9 +3,10 @@ package org.exchange.modules.engine.infrastructure.sqs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import org.exchange.modules.engine.domain.MatchingEngine;
-import org.exchange.modules.engine.domain.Order;
-import org.exchange.modules.engine.infrastructure.dto.OrderCommand;
+import org.exchange.modules.engine.application.job.SendOrderJob;
+import org.exchange.modules.engine.application.jobHandler.SendOrderJobHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -19,20 +20,21 @@ public class SqsOrderConsumer {
     private final SqsClient sqs;
     private final String queueUrl;
     private final ObjectMapper mapper;
-    private final MatchingEngine engine;
+    private final SendOrderJobHandler jobHandler;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private volatile boolean running = true;
+    private static final Logger log = LoggerFactory.getLogger(SqsOrderConsumer.class);
 
     public SqsOrderConsumer(
             SqsClient sqs,
             @Value("${app.sqs.queue-url}") String queueUrl,
             ObjectMapper mapper,
-            MatchingEngine engine
+            SendOrderJobHandler jobHandler
     ) {
         this.sqs = sqs;
         this.queueUrl = queueUrl;
         this.mapper = mapper;
-        this.engine = engine;
+        this.jobHandler = jobHandler;
     }
 
     @PostConstruct
@@ -41,7 +43,6 @@ public class SqsOrderConsumer {
     }
 
     private void consumeMessages() {
-        System.out.println("SQS consumer is running on" );
         while (running && !Thread.currentThread().isInterrupted()) {
             try {
                 var response = sqs.receiveMessage(builder -> builder
@@ -60,30 +61,18 @@ public class SqsOrderConsumer {
                 }
 
             } catch (Exception e) {
-                System.err.println("Error in SQS consumer loop: " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error in SQS consumer loop", e);
 
                 try { Thread.sleep(1000); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
             }
         }
-        System.out.println("SQS consumer stopped.");
     }
 
     private void processMessage(Message message) {
         try {
-            var orderCommand = mapper.readValue(message.body(), OrderCommand.class);
-            System.out.println("Processing order: " + orderCommand); // Log dla pewności
-            //map Command to Order
-            Order order = new Order(
-                    orderCommand.clientOrderId(),
-                    orderCommand.userId(),
-                    orderCommand.side(),
-                    orderCommand.symbol(),
-                    orderCommand.amount(),
-                    orderCommand.price()
-            );
-
-            engine.process(order);
+            var job = mapper.readValue(message.body(), SendOrderJob.class);
+            log.info("Processing order: {}", job);
+            jobHandler.handle(job);
 
             sqs.deleteMessage(builder -> builder
                     .queueUrl(queueUrl)
@@ -91,7 +80,7 @@ public class SqsOrderConsumer {
                     .build()
             );
         } catch (Exception e) {
-            System.err.println("Failed to process message ID " + message.messageId() + ": " + e.getMessage());
+            log.error("Failed to process", e);
         }
     }
 

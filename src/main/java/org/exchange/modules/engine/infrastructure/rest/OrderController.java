@@ -25,8 +25,6 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<?> submitOrder(@RequestBody OrderCommand command) throws JsonProcessingException
     {
-        System.out.println(command);
-
         SendOrderJob job = new SendOrderJob(
                 command.clientOrderId(),
                 command.userId(),

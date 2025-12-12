@@ -1,7 +1,7 @@
 package org.exchange.modules.engine.application.job;
 
 import org.exchange.modules.core.domain.message.JobInterface;
-import org.exchange.modules.engine.domain.Side;
+import org.exchange.modules.engine.domain.model.Side;
 
 import java.math.BigDecimal;
 

@@ -3,7 +3,7 @@ package org.exchange.modules.engine.infrastructure.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.exchange.modules.engine.domain.Side;
+import org.exchange.modules.engine.domain.model.Side;
 
 import java.math.BigDecimal;
 
