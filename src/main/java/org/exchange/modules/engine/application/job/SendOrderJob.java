@@ -9,7 +9,7 @@ public record SendOrderJob (
         String clientOrderId,
         Long userId,
         Side side,
-        String symbol,
+        Long instrumentId,
         BigDecimal amount,
         BigDecimal price
 ) implements JobInterface {}

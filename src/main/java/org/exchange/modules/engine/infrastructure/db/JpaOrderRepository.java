@@ -35,6 +35,7 @@ public class JpaOrderRepository implements OrderRepository {
     @Override
     @Transactional
     public int saveBatch(List<Order> orders) {
+        log.info("Attempt to save batch of {} orders", orders.size());
         if (orders == null || orders.isEmpty()) {
             return 0;
         }

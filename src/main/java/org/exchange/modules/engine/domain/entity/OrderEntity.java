@@ -14,7 +14,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "orders", indexes = {
     @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_symbol", columnList = "symbol"),
+    @Index(name = "idx_instrument_id", columnList = "instrument_id"),
     @Index(name = "idx_created_at", columnList = "created_at")
 })
 public class OrderEntity {
@@ -30,8 +30,8 @@ public class OrderEntity {
     @Column(name = "side", nullable = false, length = 4)
     private Side side;
     
-    @Column(name = "symbol", nullable = false, length = 20)
-    private String symbol;
+    @Column(name = "instrument_id", nullable = false)
+    private Long instrumentId;
     
     @Column(name = "amount", nullable = false, precision = 20, scale = 8)
     private BigDecimal amount;
@@ -41,7 +41,7 @@ public class OrderEntity {
     
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-    
+
     protected OrderEntity() {
         // JPA requires default constructor
     }
@@ -49,7 +49,7 @@ public class OrderEntity {
     public OrderEntity(Order order) {
         this.userId = order.getUserId();
         this.side = order.getSide();
-        this.symbol = order.getSymbol();
+        this.instrumentId = order.getInstrumentId();
         this.amount = order.getAmount();
         this.price = order.getPrice();
         this.createdAt = Instant.now();
@@ -73,8 +73,8 @@ public class OrderEntity {
         return side;
     }
     
-    public String getSymbol() {
-        return symbol;
+    public Long getInstrumentId() {
+        return instrumentId;
     }
     
     public BigDecimal getAmount() {

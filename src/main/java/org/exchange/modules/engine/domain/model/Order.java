@@ -6,7 +6,7 @@ public class Order {
     private final String clientOrderId;
     private final Long userId;
     private final Side side;
-    private final String symbol;
+    private final Long instrumentId;  // Changed from String symbol
     private BigDecimal amount;
     private final BigDecimal price;
 
@@ -14,7 +14,7 @@ public class Order {
             String clientOrderId,
             Long userId,
             Side side,
-            String symbol,
+            Long instrumentId,
             BigDecimal amount,
             BigDecimal price
     ) {
@@ -27,8 +27,8 @@ public class Order {
         if (side == null) {
             throw new IllegalArgumentException("Side cannot be null");
         }
-        if (symbol == null || symbol.isEmpty()) {
-            throw new IllegalArgumentException("Symbol cannot be null or empty");
+        if (instrumentId == null) {
+            throw new IllegalArgumentException("Instrument ID cannot be null");
         }
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount cannot be null or less than or equal to zero");
@@ -40,7 +40,7 @@ public class Order {
         this.clientOrderId = clientOrderId;
         this.userId = userId;
         this.side = side;
-        this.symbol = symbol;
+        this.instrumentId = instrumentId;
         this.amount = amount;
         this.price = price;
     }
@@ -72,7 +72,7 @@ public class Order {
         return price;
     }
 
-    public String getSymbol() {
-        return symbol;
+    public Long getInstrumentId() {
+        return instrumentId;
     }
 }

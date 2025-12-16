@@ -26,7 +26,7 @@ public class SendOrderJobHandler implements JobHandlerInterface<SendOrderJob> {
                 job.clientOrderId(),
                 job.userId(),
                 job.side(),
-                job.symbol(),
+                job.instrumentId(),
                 job.amount(),
                 job.price()
         );

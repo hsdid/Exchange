@@ -21,7 +21,7 @@ public class BinaryOrderSerializer {
         buffer.putLong(order.getUserId() != null ? order.getUserId() : 0L);
         writeString(buffer, order.getClientOrderId());
         buffer.put((byte) (order.getSide() == Side.BUY ? 0 : 1));
-        writeString(buffer, order.getSymbol());
+        buffer.putLong(order.getInstrumentId()); // Changed: instrumentId instead of symbol string
         writeString(buffer, order.getAmount().toString());
         writeString(buffer, order.getPrice().toString());
 
@@ -39,11 +39,11 @@ public class BinaryOrderSerializer {
         String reqId = readString(buffer);
         byte sideByte = buffer.get();
         Side side = (sideByte == 0) ? Side.BUY : Side.SELL;
-        String symbol = readString(buffer);
+        Long instrumentId = buffer.getLong(); // Changed: read instrumentId instead of symbol string
         BigDecimal amount = new BigDecimal(readString(buffer));
         BigDecimal price = new BigDecimal(readString(buffer));
 
-        return new Order(reqId, userId, side, symbol, amount, price);
+        return new Order(reqId, userId, side, instrumentId, amount, price);
     }
 
     private static void writeString(ByteBuffer buf, String s) {

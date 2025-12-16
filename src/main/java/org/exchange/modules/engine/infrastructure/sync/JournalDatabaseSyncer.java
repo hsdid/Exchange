@@ -94,10 +94,12 @@ public class JournalDatabaseSyncer {
     private void syncLoop() {
         while (running.get()) {
             try {
+                //log.info("Syncing orders from offset: {}", currentOffset);
                 List<Order> batch = new ArrayList<>(batchSize);
                 
                 // Czytaj z journal od ostatniego offsetu
                 long newOffset = journal.readFrom(currentOffset, order -> {
+                    log.info("Reading order from journal: {}", order);
                     batch.add(order);
                 });
                 
