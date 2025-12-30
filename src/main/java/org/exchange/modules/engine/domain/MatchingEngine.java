@@ -4,20 +4,14 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.exchange.modules.engine.domain.journal.ExchangeEventJournal;
 import org.exchange.modules.engine.domain.journal.JournalModelEvent;
-import org.exchange.modules.engine.domain.model.Deposit;
-import org.exchange.modules.engine.domain.model.Instrument;
-import org.exchange.modules.engine.domain.model.Order;
-import org.exchange.modules.engine.domain.model.Side;
+import org.exchange.modules.engine.domain.model.*;
 import org.exchange.modules.engine.infrastructure.cache.InstrumentCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
 import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
-
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.concurrent.*;
 
 @Service
@@ -54,27 +48,8 @@ public final class MatchingEngine {
             log.info("Matching Engine Worker started.");
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    JournalModelEvent modelEvent = queue.take();
-
-                    if (modelEvent instanceof Order order) {
-                        if (deduplicator.isDuplicate(order.getClientOrderId())) {
-                            log.info("Ignored duplicate order: {}", order.getClientOrderId());
-                            continue;
-                        }
-
-                        journal.append(order);
-
-                        deduplicator.markAsProcessed(order.getClientOrderId());
-                        orderBook.process(order, balanceManager);
-                    } else if (modelEvent instanceof Deposit deposit) {
-                        journal.append(deposit);
-                        balanceManager.deposit(
-                                deposit.getUserId(),
-                                deposit.getAssetId(),
-                                deposit.getAmount()
-                        );
-                    }
-
+                    JournalModelEvent event = queue.take();
+                    processInternal(event);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     log.info("Worker interrupted, shutting down.");
@@ -93,39 +68,11 @@ public final class MatchingEngine {
     }
 
     public void process(Order order) {
-        //check if order is already processed
-        if (deduplicator.isDuplicate(order.getClientOrderId())) {
-            log.info("Ignored duplicate order: {}", order.getClientOrderId());
-            return;
-        }
-
-
-        log.info("Received order: {}", order);
-        lockFunds(order);
         queue.offer(order);
     }
 
     public void process(Deposit deposit) {
-        log.info("Received deposit: {}", deposit);
         queue.offer(deposit);
-    }
-
-    private void lockFunds(Order order) {
-        //validate and lock funds
-        Instrument instrument = instrumentCache.getById(order.getInstrumentId());
-        if (null == instrument) {
-            log.warn("Order rejected: Instrument not found for id {}", order.getInstrumentId());
-            return;
-        }
-
-        Long assetToLockId = (order.getSide() == Side.BUY) ? instrument.getQuoteAssetId() : instrument.getBaseAssetId();
-
-        BigDecimal fundsToLock = (order.getSide() == Side.BUY ? order.getAmount().multiply(order.getPrice()) : order.getAmount());
-
-        boolean locked = balanceManager.tryLockFunds(order.getUserId(), assetToLockId, fundsToLock);
-        if (!locked) {
-            log.warn("Order rejected: Insufficient funds for user {}", order.getUserId());
-        }
     }
 
     private void replayJournal() throws IOException
@@ -133,9 +80,18 @@ public final class MatchingEngine {
         journal.replay(journalObject -> {
             if (journalObject instanceof Order order) {
                 //process order without adding to jurnal
-                lockFunds(order);
+                tryLockFunds(order);
                 deduplicator.markAsProcessed(order.getClientOrderId());
-                orderBook.process(order, balanceManager);
+
+                MatchResult result = orderBook.process(order);
+
+                Instrument instrument = instrumentCache.getById(order.getInstrumentId());
+
+                if (result.trades() != null) {
+                    for (TradeMatch trade : result.trades()) {
+                        balanceManager.processTrade(trade, instrument);
+                    }
+                }
             } else if (journalObject instanceof Deposit deposit) {
                 //process deposit without adding to jurnal
                 balanceManager.deposit(
@@ -148,6 +104,58 @@ public final class MatchingEngine {
         journal.init();
     }
 
+
+    private void processInternal(JournalModelEvent event) throws IOException {
+        if (event instanceof Order order) {
+            handleOrder(order);
+        } else if (event instanceof Deposit deposit) {
+            handleDeposit(deposit);
+        }
+    }
+
+    private void handleOrder(Order order) throws IOException {
+        if (deduplicator.isDuplicate(order.getClientOrderId())) {
+            log.warn("Ignored duplicate order: {}", order.getClientOrderId());
+            return;
+        }
+
+        if (!tryLockFunds(order)) {
+            log.info("Order rejected due to insufficient funds: {}", order.getClientOrderId());
+            // Tu można wygenerować zdarzenie OrderRejected i zapisać/wysłać
+            return;
+        }
+
+        MatchResult result = orderBook.process(order);
+        
+        Instrument instrument = instrumentCache.getById(order.getInstrumentId());
+        
+        if (result.trades() != null) {
+            for (TradeMatch trade : result.trades()) {
+                balanceManager.processTrade(trade, instrument);
+            }
+        }
+        
+        journal.append(order);
+        deduplicator.markAsProcessed(order.getClientOrderId());
+    }
+
+    private void handleDeposit(Deposit deposit) throws IOException {
+        journal.append(deposit);
+        balanceManager.deposit(deposit.getUserId(), deposit.getAssetId(), deposit.getAmount());
+    }
+
+    private boolean tryLockFunds(Order order) {
+        Instrument instrument = instrumentCache.getById(order.getInstrumentId());
+        if (instrument == null) {
+            log.error("Instrument not found {}", order.getInstrumentId());
+            return false;
+        }
+
+        Long assetToLockId = (order.getSide() == Side.BUY) ? instrument.getQuoteAssetId() : instrument.getBaseAssetId();
+        BigDecimal fundsToLock = (order.getSide() == Side.BUY ? order.getAmount().multiply(order.getPrice()) : order.getAmount());
+
+        return balanceManager.tryLockFunds(order.getUserId(), assetToLockId, fundsToLock);
+    }
 
     @PreDestroy
     public void stop() {

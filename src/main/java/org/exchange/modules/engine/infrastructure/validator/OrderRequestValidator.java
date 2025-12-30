@@ -2,9 +2,8 @@ package org.exchange.modules.engine.infrastructure.validator;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import org.exchange.modules.engine.domain.entity.InstrumentEntity;
 import org.exchange.modules.engine.domain.model.Instrument;
-import org.exchange.modules.engine.domain.repository.InstrumentRepository;
+import org.exchange.modules.engine.infrastructure.cache.InstrumentCache;
 import org.exchange.modules.engine.infrastructure.dto.OrderRequest;
 import org.springframework.stereotype.Component;
 
@@ -12,17 +11,18 @@ import java.math.BigDecimal;
 
 @Component
 public class OrderRequestValidator implements ConstraintValidator<ValidOrder, OrderRequest> {
-    private final InstrumentRepository instrumentRepository;
+    private final InstrumentCache instrumentCache;
 
-    public OrderRequestValidator(InstrumentRepository instrumentRepository) {
-        this.instrumentRepository = instrumentRepository;
+    public OrderRequestValidator(
+            InstrumentCache instrumentCache
+    ) {
+        this.instrumentCache = instrumentCache;
     }
     @Override
     public boolean isValid(OrderRequest request, ConstraintValidatorContext context) {
         if (request == null) return true;
 
-        Instrument instrument = instrumentRepository.findBySymbol(request.symbol())
-                .orElse(null);
+        Instrument instrument = instrumentCache.getBySymbol(request.symbol());
 
         if (instrument == null) {
             context.disableDefaultConstraintViolation();

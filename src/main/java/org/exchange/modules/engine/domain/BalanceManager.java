@@ -2,6 +2,7 @@ package org.exchange.modules.engine.domain;
 
 import org.exchange.modules.engine.domain.model.Instrument;
 import org.exchange.modules.engine.domain.model.Side;
+import org.exchange.modules.engine.domain.model.TradeMatch;
 import org.exchange.modules.engine.domain.model.TradingBalance;
 import org.exchange.modules.engine.infrastructure.cache.InstrumentCache;
 import org.slf4j.Logger;
@@ -43,31 +44,41 @@ public class BalanceManager {
         return true;
     }
 
-    public void transfer(Long userId, Long instrumentId, BigDecimal baseAmount, BigDecimal quoteAmount, Side side) {
-        Instrument instrument = instrumentCache.getById(instrumentId);
-        if (instrument == null) {
-            throw new IllegalArgumentException("Instrument not found");
-        }
-
-        Long quoteAssetId = instrument.getQuoteAssetId();
+    public void processTrade(TradeMatch trade, Instrument instrument) {
         Long baseAssetId = instrument.getBaseAssetId();
+        Long quoteAssetId = instrument.getQuoteAssetId();
 
-        // add base, consume quote
-        if (side == Side.BUY) {
-            log.info("Consume quote {} {} to {}", quoteAmount, instrumentId, userId);
-            TradingBalance quoteBalance = getBalance(userId, quoteAssetId);
-            quoteBalance.consumeLocked(quoteAmount);
-            log.info("Add base: {} {} to {}", baseAmount, instrument.getSymbol(), userId);
-            TradingBalance baseBalance = getBalance(userId, baseAssetId);
-            baseBalance.deposit(baseAmount);
+        BigDecimal baseAmount = trade.quantity();
+        BigDecimal quoteAmount = trade.quantity().multiply(trade.price());
+
+        if (trade.takerSide() == Side.BUY) {
+            // Taker (Buyer) Settlement
+            // Taker buy base, sell quote
+            TradingBalance takerQuote = getBalance(trade.takerUserId(), quoteAssetId);
+            TradingBalance takerBase = getBalance(trade.takerUserId(), baseAssetId);
+            takerQuote.consumeLocked(quoteAmount);
+            takerBase.deposit(baseAmount);
+
+            // Maker settlement
+            // Maker sell base, buy quote
+            TradingBalance makerQuote = getBalance(trade.makerUserId(), quoteAssetId);
+            TradingBalance makerBase = getBalance(trade.makerUserId(), baseAssetId);
+            makerQuote.deposit(quoteAmount);
+            makerBase.consumeLocked(baseAmount);
         } else {
-            // add quote, consume base
-            log.info("Consume base locked: {} {} to {}", baseAmount, instrument.getSymbol(), userId);
-            TradingBalance baseBalance = getBalance(userId, baseAssetId);
-            baseBalance.consumeLocked(baseAmount);
-            log.info("Add quote: {} {} to {}", quoteAmount, instrument.getSymbol(), userId);
-            TradingBalance quoteBalance = getBalance(userId, quoteAssetId);
-            quoteBalance.deposit(quoteAmount);
+            // Taker (Seller) Settlement
+            // Taker sell base, buy quote
+            TradingBalance takerQuote = getBalance(trade.takerUserId(), quoteAssetId);
+            TradingBalance takerBase = getBalance(trade.takerUserId(), baseAssetId);
+            takerQuote.deposit(quoteAmount);
+            takerBase.consumeLocked(baseAmount);
+
+            // Maker settlement
+            // Maker buy base, sell quote
+            TradingBalance makerQuote = getBalance(trade.makerUserId(), quoteAssetId);
+            TradingBalance makerBase = getBalance(trade.makerUserId(), baseAssetId);
+            makerQuote.consumeLocked(quoteAmount);
+            makerBase.deposit(baseAmount);
         }
     }
 
