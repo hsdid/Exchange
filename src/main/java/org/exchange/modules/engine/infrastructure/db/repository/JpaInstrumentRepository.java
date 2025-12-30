@@ -1,4 +1,4 @@
-package org.exchange.modules.engine.infrastructure.db;
+package org.exchange.modules.engine.infrastructure.db.repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -72,7 +72,7 @@ public class JpaInstrumentRepository implements InstrumentRepository {
     }
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Instrument save(Instrument instrument) {
         InstrumentEntity entity;
         
@@ -81,6 +81,8 @@ public class JpaInstrumentRepository implements InstrumentRepository {
             entity = new InstrumentEntity(
                 instrument.getSymbol(),
                 instrument.getName(),
+                instrument.getBaseAssetId(),
+                instrument.getQuoteAssetId(),
                 instrument.getPrecision(),
                 instrument.getMinAmount(),
                 instrument.getTickSize(),

@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class InstrumentCache {
     
-    private static final Logger log = LoggerFactory.getLogger(InstrumentCache.class);
+    private final Logger log = LoggerFactory.getLogger(InstrumentCache.class);
     
     private final InstrumentRepository repository;
     private final Map<String, Instrument> bySymbol = new ConcurrentHashMap<>();
@@ -35,20 +35,16 @@ public class InstrumentCache {
 
     @PostConstruct
     public void init() {
-        reload();
-    }
-
-    public void reload() {
         List<Instrument> instruments = repository.findAll();
-        
+
         bySymbol.clear();
         byId.clear();
-        
+
         for (Instrument instrument : instruments) {
             bySymbol.put(instrument.getSymbol(), instrument);
             byId.put(instrument.getId(), instrument);
         }
-        
+
         log.info("InstrumentCache loaded {} instruments", instruments.size());
     }
 
@@ -57,12 +53,12 @@ public class InstrumentCache {
         return instrument != null ? instrument.getId() : null;
     }
 
-    public Optional<Instrument> getBySymbol(String symbol) {
-        return Optional.ofNullable(bySymbol.get(symbol.toUpperCase()));
+    public Instrument getBySymbol(String symbol) {
+        return bySymbol.get(symbol.toUpperCase());
     }
 
-    public Optional<Instrument> getById(Long id) {
-        return Optional.ofNullable(byId.get(id));
+    public Instrument getById(Long id) {
+        return byId.get(id);
     }
 
     public String getSymbolById(Long id) {

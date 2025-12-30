@@ -1,4 +1,4 @@
-package org.exchange.modules.engine.infrastructure.db;
+package org.exchange.modules.engine.infrastructure.db.repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -26,17 +26,17 @@ public class JpaOrderRepository implements OrderRepository {
     private EntityManager em;
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void save(Order order) {
         OrderEntity entity = OrderEntity.fromDomain(order);
         em.persist(entity);
     }
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int saveBatch(List<Order> orders) {
         log.info("Attempt to save batch of {} orders", orders.size());
-        if (orders == null || orders.isEmpty()) {
+        if (orders.isEmpty()) {
             return 0;
         }
 

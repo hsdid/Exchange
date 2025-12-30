@@ -1,7 +1,9 @@
 package org.exchange.modules.engine.infrastructure.sync;
 
-import org.exchange.modules.engine.domain.journal.OrderJournal;
+import org.exchange.modules.engine.domain.journal.ExchangeEventJournal;
+import org.exchange.modules.engine.domain.model.Deposit;
 import org.exchange.modules.engine.domain.model.Order;
+import org.exchange.modules.engine.domain.repository.DepositRepository;
 import org.exchange.modules.engine.domain.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,8 +38,9 @@ public class JournalDatabaseSyncer {
     
     private static final Logger log = LoggerFactory.getLogger(JournalDatabaseSyncer.class);
     
-    private final OrderJournal journal;
-    private final OrderRepository repository;
+    private final ExchangeEventJournal journal;
+    private final OrderRepository orderRepository;
+    private final DepositRepository depositRepository;
     private final ExecutorService executor;
     private final AtomicBoolean running = new AtomicBoolean(false);
     
@@ -48,14 +51,16 @@ public class JournalDatabaseSyncer {
     private long currentOffset = 0;
     
     public JournalDatabaseSyncer(
-            OrderJournal journal,
-            OrderRepository repository,
+            ExchangeEventJournal journal,
+            OrderRepository orderRepository,
+            DepositRepository depositRepository,
             @Value("${app.sync.offset-path:data/sync-offset.txt}") String offsetPathStr,
             @Value("${app.sync.batch-size:1000}") int batchSize,
             @Value("${app.sync.poll-interval-ms:100}") long pollIntervalMs
     ) {
         this.journal = journal;
-        this.repository = repository;
+        this.orderRepository = orderRepository;
+        this.depositRepository = depositRepository;
         this.offsetPath = Paths.get(offsetPathStr);
         this.batchSize = batchSize;
         this.pollIntervalMs = pollIntervalMs;
@@ -95,19 +100,33 @@ public class JournalDatabaseSyncer {
         while (running.get()) {
             try {
                 //log.info("Syncing orders from offset: {}", currentOffset);
-                List<Order> batch = new ArrayList<>(batchSize);
+                List<Order> orderBatch = new ArrayList<>(batchSize);
+                List<Deposit> depositBatch = new ArrayList<>(batchSize);
                 
                 // Czytaj z journal od ostatniego offsetu
-                long newOffset = journal.readFrom(currentOffset, order -> {
-                    log.info("Reading order from journal: {}", order);
-                    batch.add(order);
+                long newOffset = journal.readFrom(currentOffset, journalModel -> {
+                    if (journalModel instanceof Order order) {
+                        log.info("Reading order from journal: {}", order);
+                        orderBatch.add(order);
+                    } else if (journalModel instanceof Deposit deposit) {
+                        log.info("Reading deposit from journal: {}", deposit);
+                        depositBatch.add(deposit);
+                    }
                 });
                 
                 // Jeśli są nowe ordery, zapisz do DB
-                if (!batch.isEmpty()) {
-                    int saved = repository.saveBatch(batch);
+                if (!orderBatch.isEmpty()) {
+                    int saved = orderRepository.saveBatch(orderBatch);
                     log.debug("Synced {} orders to DB, offset: {} -> {}", saved, currentOffset, newOffset);
                     
+                    // Zaktualizuj offset tylko po udanym zapisie
+                    currentOffset = newOffset;
+                    saveOffset();
+                }
+                if (!depositBatch.isEmpty()) {
+                    depositRepository.saveBatch(depositBatch);
+                    log.debug("Synced {} deposits to DB, offset: {} -> {}", depositBatch.size(), currentOffset, newOffset);
+
                     // Zaktualizuj offset tylko po udanym zapisie
                     currentOffset = newOffset;
                     saveOffset();

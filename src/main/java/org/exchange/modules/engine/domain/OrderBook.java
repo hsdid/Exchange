@@ -12,15 +12,15 @@ public class OrderBook {
     private final NavigableMap<BigDecimal, LinkedList<Order>> bids = new TreeMap<>(Comparator.reverseOrder()); //list of buy orders
     private final NavigableMap<BigDecimal, LinkedList<Order>> asks = new TreeMap<>(); //list of sell orders
 
-    public void process(Order order) {
+    public void process(Order order, BalanceManager balanceManager) {
         if (order.getSide() == Side.BUY) {
-            matchBuy(order);
+            matchBuy(order, balanceManager);
         } else {
-            matchSell(order);
+            matchSell(order, balanceManager);
         }
     }
 
-    private void matchBuy(Order buyOrder) {
+    private void matchBuy(Order buyOrder, BalanceManager balanceManager) {
         // naive: match with lowest ask price <= buy.price
         Iterator<Map.Entry<BigDecimal, LinkedList<Order>>> asksIterator = asks.entrySet().iterator();
         BigDecimal remainingAmountToBuy = buyOrder.getAmount();
@@ -30,11 +30,32 @@ public class OrderBook {
             if (buyOrder.getPrice().compareTo(askLevelPrice) < 0) break; // price not acceptable
             LinkedList<Order> offerList = askLevel.getValue();
             while (!offerList.isEmpty() && remainingAmountToBuy.compareTo(BigDecimal.ZERO) > 0) {
+                // ask sell order
                 Order ask = offerList.peek();
+                // take sell order base qty what is available
                 BigDecimal tradeQtyToConsume = remainingAmountToBuy.min(ask.getAmount());
+                remainingAmountToBuy = remainingAmountToBuy.subtract(tradeQtyToConsume);
+
                 // here produce Trade record, update wallets -- omitted for brevity
                 // reduce quantities (in real model we'd mutate sizes)
-                remainingAmountToBuy = remainingAmountToBuy.subtract(tradeQtyToConsume);
+
+                // transfer balance in buying wallet
+                 balanceManager.transfer(
+                         buyOrder.getUserId(),
+                         buyOrder.getInstrumentId(),
+                         tradeQtyToConsume,
+                         tradeQtyToConsume.multiply(ask.getPrice()),
+                         Side.BUY
+                 );
+
+                 // transfer balance in selling wallet
+                balanceManager.transfer(
+                        ask.getUserId(),
+                        ask.getInstrumentId(),
+                        tradeQtyToConsume,
+                        tradeQtyToConsume.multiply(ask.getPrice()),
+                        Side.SELL
+                );
 
                 if (tradeQtyToConsume.equals(ask.getAmount())) {
                     offerList.poll();
@@ -50,7 +71,7 @@ public class OrderBook {
         }
     }
 
-    private void matchSell(Order sellOrder) {
+    private void matchSell(Order sellOrder, BalanceManager balanceManager) {
         Iterator<Map.Entry<BigDecimal, LinkedList<Order>>> bidsIterator = bids.entrySet().iterator();
         BigDecimal remainingAmountToSell = sellOrder.getAmount();
         while (bidsIterator.hasNext() && remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
@@ -59,10 +80,30 @@ public class OrderBook {
             if (sellOrder.getPrice().compareTo(bidPrice) > 0) break;
             LinkedList<Order> orderList = bidsLevel.getValue();
             while (!orderList.isEmpty() && remainingAmountToSell.compareTo(BigDecimal.ZERO) > 0) {
+                // take buy order base qty what is available
                 Order bid = orderList.peek();
                 BigDecimal tradeQtyToConsume = remainingAmountToSell.min(bid.getAmount());
-                // produce trade ...
                 remainingAmountToSell = remainingAmountToSell.subtract(tradeQtyToConsume);
+                // produce trade ...
+
+                //
+                balanceManager.transfer(
+                        bid.getUserId(),
+                        bid.getInstrumentId(),
+                        tradeQtyToConsume,
+                        tradeQtyToConsume.multiply(bid.getPrice()),
+                        Side.BUY
+                );
+
+                balanceManager.transfer(
+                        sellOrder.getUserId(),
+                        sellOrder.getInstrumentId(),
+                        tradeQtyToConsume,
+                        tradeQtyToConsume.multiply(sellOrder.getPrice()),
+                        Side.SELL
+                );
+
+
                 if (tradeQtyToConsume.equals(bid.getAmount())) {
                     orderList.poll(); // remove from book
                 } else {
@@ -78,7 +119,7 @@ public class OrderBook {
     }
 
 
-    //--------- to delete later
+    //TODO: remove only for testing
     public OrderBookView getSnapshot(String symbol, int depth) {
         return new OrderBookView(
                 symbol,

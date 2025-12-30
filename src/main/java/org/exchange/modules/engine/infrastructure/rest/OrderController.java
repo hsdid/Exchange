@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/orders")
-public class OrderController {
+final public class OrderController {
     private final JobBusInterface jobBus;
     private final String queueUrl;
     private final InstrumentCache instrumentCache;

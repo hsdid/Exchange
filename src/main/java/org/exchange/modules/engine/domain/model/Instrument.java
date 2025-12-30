@@ -11,6 +11,8 @@ public class Instrument {
     private final Long id;
     private final String symbol;
     private final String name;
+    private final Long baseAssetId;     // ID dla BTC
+    private final Long quoteAssetId;    // ID dla USDT
     private final int precision;        // Decimal places (e.g., 8 for BTC)
     private final BigDecimal minAmount; // Minimum order amount
     private final BigDecimal tickSize;  // Minimum price increment
@@ -20,6 +22,8 @@ public class Instrument {
             Long id,
             String symbol,
             String name,
+            Long baseAssetId,
+            Long quoteAssetId,
             int precision,
             BigDecimal minAmount,
             BigDecimal tickSize,
@@ -47,6 +51,8 @@ public class Instrument {
         this.id = id;
         this.symbol = symbol.toUpperCase();
         this.name = name;
+        this.baseAssetId = baseAssetId;
+        this.quoteAssetId = quoteAssetId;
         this.precision = precision;
         this.minAmount = minAmount;
         this.tickSize = tickSize;
@@ -89,5 +95,13 @@ public class Instrument {
     
     public InstrumentStatus getStatus() {
         return status;
+    }
+
+    public Long getBaseAssetId() {
+        return baseAssetId;
+    }
+
+    public Long getQuoteAssetId() {
+        return quoteAssetId;
     }
 }

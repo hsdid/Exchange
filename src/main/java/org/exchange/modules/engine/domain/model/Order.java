@@ -1,8 +1,10 @@
 package org.exchange.modules.engine.domain.model;
 
+import org.exchange.modules.engine.domain.journal.JournalModelEvent;
+
 import java.math.BigDecimal;
 
-public class Order {
+final public class Order implements JournalModelEvent {
     private final String clientOrderId;
     private final Long userId;
     private final Side side;

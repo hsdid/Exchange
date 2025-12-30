@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SendOrderJobHandler implements JobHandlerInterface<SendOrderJob> {
-
     private static final Logger log = LoggerFactory.getLogger(SendOrderJobHandler.class);
     private final MatchingEngine engine;
 

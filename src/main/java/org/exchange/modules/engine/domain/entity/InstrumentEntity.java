@@ -26,7 +26,13 @@ public class InstrumentEntity {
     
     @Column(name = "name", nullable = false, length = 100)
     private String name;
-    
+
+    @Column(name = "base_currency_id", nullable = false)
+    private Long baseCurrencyId;
+
+    @Column(name = "quote_currency_id", nullable = false)
+    private Long quoteCurrencyId;
+
     @Column(name = "precision", nullable = false)
     private int precision;
     
@@ -53,6 +59,8 @@ public class InstrumentEntity {
     public InstrumentEntity(
             String symbol,
             String name,
+            Long baseCurrencyId,
+            Long quoteCurrencyId,
             int precision,
             BigDecimal minAmount,
             BigDecimal tickSize,
@@ -60,6 +68,8 @@ public class InstrumentEntity {
     ) {
         this.symbol = symbol.toUpperCase();
         this.name = name;
+        this.baseCurrencyId = baseCurrencyId;
+        this.quoteCurrencyId = quoteCurrencyId;
         this.precision = precision;
         this.minAmount = minAmount;
         this.tickSize = tickSize;
@@ -74,7 +84,17 @@ public class InstrumentEntity {
     }
     
     public Instrument toDomain() {
-        return new Instrument(id, symbol, name, precision, minAmount, tickSize, status);
+        return new Instrument(
+                id,
+                symbol,
+                name,
+                baseCurrencyId,
+                quoteCurrencyId,
+                precision,
+                minAmount,
+                tickSize,
+                status
+        );
     }
     
     // Getters and setters
