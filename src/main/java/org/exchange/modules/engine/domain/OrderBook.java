@@ -9,7 +9,7 @@ import org.exchange.modules.engine.infrastructure.dto.OrderBookView;
 import java.math.BigDecimal;
 import java.util.*;
 
-public class OrderBook {
+class OrderBook {
     // price -> list of orders
     private final NavigableMap<BigDecimal, LinkedList<Order>> bids = new TreeMap<>(Comparator.reverseOrder()); //list of buy orders
     private final NavigableMap<BigDecimal, LinkedList<Order>> asks = new TreeMap<>(); //list of sell orders

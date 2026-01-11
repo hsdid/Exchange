@@ -19,7 +19,7 @@ final public class OrderController {
 
     public OrderController(
             JobBusInterface jobBus,
-            @Value("${app.sqs.queue-url}") String queueUrl,
+            @Value("${app.sqs.queue-name}") String queueUrl,
             InstrumentCache instrumentCache
     ) {
         this.jobBus = jobBus;

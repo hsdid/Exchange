@@ -21,7 +21,7 @@ final public class WalletController {
 
     public WalletController(
             JobBusInterface jobBus,
-            @Value("${app.sqs.queue-deposit-url}") String queueUrl,
+            @Value("${app.sqs.queue-deposit-name}") String queueUrl,
             AssetCache assetCache,
             BalanceManager balanceManager
     ) {

@@ -18,12 +18,7 @@ import java.util.Map;
 public class BalanceManager {
     // userId -> assetId -> balance
     private final Map<Long, Map<Long, TradingBalance>> balances = new HashMap<>();
-    private final InstrumentCache instrumentCache;
     private static final Logger log = LoggerFactory.getLogger(BalanceManager.class);
-
-    public BalanceManager(InstrumentCache instrumentCache) {
-        this.instrumentCache = instrumentCache;
-    }
 
     public TradingBalance getBalance(Long userId, Long assetId) {
         return balances

@@ -106,7 +106,7 @@ public class JournalDatabaseSyncer {
                 // Czytaj z journal od ostatniego offsetu
                 long newOffset = journal.readFrom(currentOffset, journalModel -> {
                     if (journalModel instanceof Order order) {
-                        log.info("Reading order from journal: {}", order);
+                        log.info("Processing order: {}", order);
                         orderBatch.add(order);
                     } else if (journalModel instanceof Deposit deposit) {
                         log.info("Reading deposit from journal: {}", deposit);

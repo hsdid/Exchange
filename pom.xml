@@ -34,16 +34,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- AWS SDK v2 SQS -->
+        <!-- Spring Cloud AWS SQS -->
         <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sqs</artifactId>
-            <version>2.29.9</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>url-connection-client</artifactId>
-            <version>2.29.9</version>
+            <groupId>io.awspring.cloud</groupId>
+            <artifactId>spring-cloud-aws-starter-sqs</artifactId>
+            <version>3.1.1</version>
         </dependency>
 
         <!-- JSON (Jackson) -->
