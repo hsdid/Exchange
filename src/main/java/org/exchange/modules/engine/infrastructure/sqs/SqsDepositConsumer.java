@@ -18,7 +18,12 @@ public class SqsDepositConsumer {
 
     @SqsListener(value = "${app.sqs.queue-deposit-name}")
     public void listen(DepositJob job) {
-        log.info("Processing deposit job: {}", job);
-        jobHandler.handle(job);
+        try {
+            log.info("Processing deposit job: {}", job);
+            jobHandler.handle(job);
+        } catch (Exception e) {
+            log.error("Failed to process deposit: {}", job, e);
+            throw new RuntimeException("Failed to process deposit", e);
+        }
     }
 }

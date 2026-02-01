@@ -1,4 +1,4 @@
-package org.exchange.infrastructure.message;
+package org.exchange.modules.core.infrastructure.message.sqs;
 
 import io.awspring.cloud.sqs.config.SqsMessageListenerContainerFactory;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
@@ -40,6 +40,9 @@ public class SqsConfig {
         return SqsMessageListenerContainerFactory
                 .builder()
                 .sqsAsyncClient(sqsAsyncClient)
+                .configure(options -> options
+                        .maxMessagesPerPoll(10)
+                )
                 .build();
     }
 

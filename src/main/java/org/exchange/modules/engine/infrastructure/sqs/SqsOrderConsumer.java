@@ -18,7 +18,12 @@ public class SqsOrderConsumer {
 
     @SqsListener(value = "${app.sqs.queue-name}")
     public void listen(SendOrderJob job) {
-        log.info("Processing order: {}", job);
-        jobHandler.handle(job);
+        try {
+            log.info("Processing order: {}", job);
+            jobHandler.handle(job);
+        } catch (Exception e) {
+            log.error("Failed to process order: {}", job, e);
+            throw new RuntimeException("Failed to process order", e);
+        }
     }
 }

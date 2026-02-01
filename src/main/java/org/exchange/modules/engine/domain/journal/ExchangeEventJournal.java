@@ -21,7 +21,6 @@ public class ExchangeEventJournal implements AutoCloseable {
         this.journalPath = Paths.get(pathStr);
     }
 
-    // dodać interface do obiektów które mają być zapisywane w journalu
     public void append(JournalModelEvent event) throws IOException {
         writeBuffer.clear();
         BinaryEventSerializer.serialize(event, writeBuffer);
@@ -31,7 +30,6 @@ public class ExchangeEventJournal implements AutoCloseable {
         }
     }
 
-    // Metoda replay przyjmuje Consumera - co zrobić z odczytanym orderem
     public void replay(Consumer<JournalModelEvent> journalProcessor) throws IOException {
         if (!Files.exists(journalPath)) return;
 
